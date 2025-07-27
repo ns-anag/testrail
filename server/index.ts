@@ -1,6 +1,8 @@
 
 import express, { Express } from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import 'dotenv/config';
 
 import { GoogleGenAI, Chat, FunctionDeclaration, Part, Type as GoogleGenAIType } from '@google/genai';
@@ -130,6 +132,14 @@ const makeTestRailApiCall = async (functionName: string, args: any, settings: Te
   return response.json();
 };
 
+// --- STATIC FILE SERVING ---
+// Get current directory for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve static files from the root directory in development
+// In production, this would serve from dist/public
+app.use(express.static(path.join(__dirname, '..')));
 
 // --- API ROUTES ---
 
@@ -170,6 +180,10 @@ app.post('/api/chat', async (req, res) => {
         if (functionCall) {
             const { name, args } = functionCall;
             
+            if (!name) {
+                throw new Error('Function call missing name');
+            }
+            
             // Inform the client that we are making an API call
             const statusMessage = { role: Role.System, text: `Fetching data for ${name} from TestRail...` };
             res.write(JSON.stringify(statusMessage) + '\n');
@@ -205,6 +219,11 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
+// --- SPA FALLBACK ---
+// Serve index.html for all non-API routes (SPA routing)
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'index.html'));
+});
 
 // --- SERVER START ---
 app.listen(port, () => {
