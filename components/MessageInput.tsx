@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
-import { SendIcon } from './icons';
+import { SendIcon, StopIcon } from './icons';
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
+  onStopProcessing: () => void;
   isLoading: boolean;
   isDisabled: boolean;
 }
 
-const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, isLoading, isDisabled }) => {
+const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, onStopProcessing, isLoading, isDisabled }) => {
   const [text, setText] = useState('');
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -50,13 +51,25 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, isLoading, i
           className="flex-1 bg-gray-700 border border-gray-600 rounded-lg p-3 resize-none text-gray-200 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition duration-200 max-h-48 disabled:cursor-not-allowed"
           disabled={isLoading || isDisabled}
         />
-        <button
-          type="submit"
-          disabled={isLoading || isDisabled || !text.trim()}
-          className="bg-blue-600 text-white rounded-full p-3 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors duration-200 flex-shrink-0"
-        >
-          <SendIcon className="w-6 h-6" />
-        </button>
+        {isLoading ? (
+          <button
+            type="button"
+            onClick={onStopProcessing}
+            className="bg-red-600 text-white rounded-full p-3 hover:bg-red-500 transition-colors duration-200 flex-shrink-0"
+            title="Stop processing"
+          >
+            <StopIcon className="w-6 h-6" />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={isDisabled || !text.trim()}
+            className="bg-blue-600 text-white rounded-full p-3 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors duration-200 flex-shrink-0"
+            title="Send message"
+          >
+            <SendIcon className="w-6 h-6" />
+          </button>
+        )}
       </form>
     </div>
   );

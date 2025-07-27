@@ -20,9 +20,32 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<TestRailSettings | null>(null);
   const [showSettings, setShowSettings] = useState<boolean>(true);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+
+  const handleStopProcessing = useCallback(() => {
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+      setIsLoading(false);
+      
+      // Add a message indicating the request was cancelled
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const lastMessage = newMessages[newMessages.length - 1];
+        if (lastMessage && lastMessage.role === Role.Model && lastMessage.text === '') {
+          lastMessage.text = "Request cancelled by user.";
+        }
+        return newMessages;
+      });
+    }
+  }, [abortController]);
 
   const handleSendMessage = useCallback(async (inputText: string) => {
     if (isLoading || !inputText.trim() || !settings) return;
+
+    // Create new AbortController for this request
+    const controller = new AbortController();
+    setAbortController(controller);
 
     setIsLoading(true);
     setError(null);
@@ -38,6 +61,7 @@ const App: React.FC = () => {
       const response = await fetch(`${SERVER_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal, // Add abort signal
         body: JSON.stringify({
           message: inputText,
           history: currentHistory.slice(0, -1), // Exclude the placeholder
@@ -90,11 +114,20 @@ const App: React.FC = () => {
 
     } catch (e) {
       console.error(e);
+      
+      // Handle abort error differently
+      if (e instanceof Error && e.name === 'AbortError') {
+        // Request was cancelled - don't show this as an error
+        console.log('Request was cancelled by user');
+        return;
+      }
+      
       const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
       setError(`Error: ${errorMessage}`);
       setMessages(prev => [...prev, { role: Role.Model, text: `Sorry, I've run into an issue: ${errorMessage}` }]);
     } finally {
       setIsLoading(false);
+      setAbortController(null); // Clean up the abort controller
       // Clean up system messages
       setMessages(prev => prev.filter(m => m.role !== Role.System));
     }
@@ -106,7 +139,12 @@ const App: React.FC = () => {
       <Header onToggleSettings={() => setShowSettings(s => !s)} />
       {showSettings && <Settings onSave={setSettings} onDone={() => setShowSettings(false)} />}
       <ChatWindow messages={messages} />
-      <MessageInput onSendMessage={handleSendMessage} isLoading={isLoading} isDisabled={!settings} />
+      <MessageInput 
+        onSendMessage={handleSendMessage} 
+        onStopProcessing={handleStopProcessing}
+        isLoading={isLoading} 
+        isDisabled={!settings} 
+      />
       {error && (
         <div className="bg-red-500/20 text-red-300 p-2 text-center text-sm">
           {error}
