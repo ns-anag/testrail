@@ -1,0 +1,26 @@
+{
+  "name": "testrail-agent",
+  "version": "1.0.0",
+  "description": "A conversational TestRail agent with a backend proxy to solve CORS issues.",
+  "main": "dist/server/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node dist/server/index.js",
+    "build": "tsc -p tsconfig.server.json",
+    "dev": "nodemon"
+  },
+  "dependencies": {
+    "@google/genai": "^1.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.9",
+    "nodemon": "^3.1.4",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
+  }
+}
