@@ -6,7 +6,8 @@ import ChatWindow from './components/ChatWindow';
 import MessageInput from './components/MessageInput';
 import Settings from './components/Settings';
 
-const SERVER_URL = 'http://localhost:3001';
+// Use relative URL for unified deployment - works in both development and production
+const SERVER_URL = '';
 
 const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([

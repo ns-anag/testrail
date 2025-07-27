@@ -1,6 +1,99 @@
 # TestRail Agent
 
-This is a sleek and responsive chat application that allows users to interact with a powerful AI agent powered by the Google Gemini API. The agent can connect directly to your TestRail instance to fetch live data about test executions and answer your questions in a natural, conversational way.
+This is a sleek and responsive chat applic3. Once your credentials are verified, the message input will become active, and you can start chatting.
+
+---
+
+## Docker Deployment
+
+The application can be easily containerized and deployed using Docker. This provides a consistent environment and simplifies deployment across different platforms.
+
+### Prerequisites
+
+- Docker installed and running on your machine
+- Docker Compose (included with Docker Desktop)
+
+### Quick Start with Docker Compose
+
+1. **Create Environment File:** Create a `.env` file in the project root:
+   ```
+   API_KEY=your_google_gemini_api_key
+   ```
+
+2. **Build and Run:** Start the application using Docker Compose:
+   ```bash
+   docker-compose up --build
+   ```
+
+3. **Access the Application:** Open your browser to `http://localhost:3001`
+
+### Manual Docker Build
+
+If you prefer to build and run the Docker container manually:
+
+1. **Build the Image:**
+   ```bash
+   docker build -t testrail-agent .
+   ```
+
+2. **Run the Container:**
+   
+   **Option A: Direct Environment Variable (Recommended)**
+   ```bash
+   docker run -p 3001:3001 -e API_KEY=your_google_gemini_api_key testrail-agent
+   ```
+
+   **Option B: Using Environment File**
+   ```bash
+   # Create .env file first with API_KEY=your_google_gemini_api_key
+   docker run -p 3001:3001 --env-file .env testrail-agent
+   ```
+
+### Using NPM Scripts
+
+The project includes convenient NPM scripts for Docker operations:
+
+```bash
+# Build the Docker image
+npm run docker:build
+
+# Run with environment file (.env must exist)
+npm run docker:run
+
+# Run with manual environment variable passing
+npm run docker:run:env -- -e API_KEY=your_api_key_here
+
+# Start with Docker Compose
+npm run docker:up
+
+# Stop Docker Compose
+npm run docker:down
+
+# Development mode with hot reload
+npm run docker:dev
+```
+
+### Development with Docker
+
+For development with hot reload, use the development profile:
+
+```bash
+docker-compose --profile development up
+```
+
+This will start the container with volume mounts for live code updates.
+
+### Container Features
+
+- **Multi-stage Build:** Optimized for production with minimal image size
+- **Security:** Runs as non-root user with proper security measures
+- **Health Checks:** Built-in health monitoring on `/api/health`
+- **Signal Handling:** Graceful shutdown with proper process management
+- **Production Ready:** Includes compression, security headers, and logging
+
+---
+
+## Deployment to Google Cloud that allows users to interact with a powerful AI agent powered by the Google Gemini API. The agent can connect directly to your TestRail instance to fetch live data about test executions and answer your questions in a natural, conversational way.
 
 The application is built as a single, unified service, with a React frontend and a Node.js Express backend served from the same container.
 

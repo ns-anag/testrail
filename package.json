@@ -5,7 +5,8 @@
   "main": "dist/server/index.js",
   "type": "module",
   "scripts": {
-    "start": "cross-env NODE_ENV=production node dist/server/index.js",
+    "start": "node dist/server/index.js",
+    "start:prod": "cross-env NODE_ENV=production node dist/server/index.js",
     "start:dev": "node dist/server/index.js",
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "vite build",
@@ -16,7 +17,13 @@
     "dev:frontend": "vite",
     "dev:legacy": "nodemon",
     "preview": "npm run build && npm run start:dev",
-    "analyze": "npm run build:frontend -- --analyze"
+    "analyze": "npm run build:frontend -- --analyze",
+    "docker:build": "docker build -t testrail-agent .",
+    "docker:run": "docker run -p 3001:3001 --env-file .env testrail-agent",
+    "docker:run:env": "docker run -p 3001:3001 testrail-agent",
+    "docker:up": "docker-compose up --build",
+    "docker:down": "docker-compose down",
+    "docker:dev": "docker-compose --profile development up"
   },
   "dependencies": {
     "@google/genai": "^1.11.0",
