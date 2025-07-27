@@ -3,6 +3,9 @@ import express, { Express } from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import compression from 'compression';
+import helmet from 'helmet';
+import morgan from 'morgan';
 import 'dotenv/config';
 
 import { GoogleGenAI, Chat, FunctionDeclaration, Part, Type as GoogleGenAIType } from '@google/genai';
@@ -11,10 +14,85 @@ import { Message, Role, TestRailSettings } from '../common/types.js';
 const app: Express = express();
 const port = 3001;
 
-// --- MIDDLEWARE ---
-app.use(cors());
-app.use(express.json());
+// --- ENVIRONMENT CONFIGURATION ---
+const isProduction = process.env.NODE_ENV === 'production';
+const isDevelopment = !isProduction;
 
+// --- MIDDLEWARE ---
+// Security middleware for production
+if (isProduction) {
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'"],
+      },
+    },
+  }));
+  app.use(compression()); // Gzip compression for production
+  app.use(morgan('combined')); // Detailed logging for production
+} else {
+  app.use(morgan('dev')); // Simple logging for development
+}
+
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+
+// --- STATIC FILE SERVING ---
+// Get current directory for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve static files from the root directory in development
+// In production, serve from dist/public built by Vite
+// Auto-detect if we're running from dist/ (built mode)
+const isBuiltMode = __dirname.includes('dist');
+const staticDir = isProduction || isBuiltMode
+  ? path.join(__dirname, '..', 'public')  // Production/Built: serve from dist/public (up one level from dist/server)
+  : path.join(__dirname, '..');     // Development: serve from root
+
+console.log(`Environment: ${isProduction ? 'Production' : 'Development'}`);
+console.log(`Serving static files from: ${staticDir}`);
+
+// Production: Serve static files with caching headers
+if (isProduction) {
+  app.use(express.static(staticDir, {
+    maxAge: '1y', // Cache static assets for 1 year
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, path) => {
+      if (path.endsWith('.html')) {
+        // Don't cache HTML files (for SPA routing)
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    }
+  }));
+} else {
+  // Development: Serve without caching
+  app.use(express.static(staticDir));
+}
+
+// --- API ROUTES ---
+
+// Health check endpoint for monitoring
+app.get('/api/health', (_req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    environment: isProduction ? 'production' : 'development'
+  });
+});
+
+// Readiness check endpoint
+app.get('/api/ready', (_req, res) => {
+  res.status(200).json({
+    status: 'ready',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // --- GEMINI & TESTRAIL SETUP ---
 const API_KEY = process.env.API_KEY;
@@ -132,23 +210,6 @@ const makeTestRailApiCall = async (functionName: string, args: any, settings: Te
   return response.json();
 };
 
-// --- STATIC FILE SERVING ---
-// Get current directory for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Serve static files from the root directory in development
-// In production, serve from dist/public built by Vite
-const isProduction = process.env.NODE_ENV === 'production';
-const staticDir = isProduction 
-  ? path.join(__dirname, 'public')  // Production: serve from dist/public
-  : path.join(__dirname, '..');     // Development: serve from root
-
-console.log(`Serving static files from: ${staticDir}`);
-app.use(express.static(staticDir));
-
-// --- API ROUTES ---
-
 app.post('/api/verify', async (req, res) => {
   const settings = req.body as TestRailSettings;
   try {
@@ -235,6 +296,24 @@ app.get('*', (_req, res) => {
 });
 
 // --- SERVER START ---
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
+  console.log(`Environment: ${isProduction ? 'Production' : 'Development'}`);
+});
+
+// --- GRACEFUL SHUTDOWN ---
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('Process terminated');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  server.close(() => {
+    console.log('Process terminated');
+    process.exit(0);
+  });
 });
