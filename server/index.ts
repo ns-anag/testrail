@@ -138,8 +138,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Serve static files from the root directory in development
-// In production, this would serve from dist/public
-app.use(express.static(path.join(__dirname, '..')));
+// In production, serve from dist/public built by Vite
+const isProduction = process.env.NODE_ENV === 'production';
+const staticDir = isProduction 
+  ? path.join(__dirname, 'public')  // Production: serve from dist/public
+  : path.join(__dirname, '..');     // Development: serve from root
+
+console.log(`Serving static files from: ${staticDir}`);
+app.use(express.static(staticDir));
 
 // --- API ROUTES ---
 
@@ -222,7 +228,10 @@ app.post('/api/chat', async (req, res) => {
 // --- SPA FALLBACK ---
 // Serve index.html for all non-API routes (SPA routing)
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'index.html'));
+  const indexPath = isProduction 
+    ? path.join(__dirname, 'public', 'index.html')
+    : path.join(__dirname, '..', 'index.html');
+  res.sendFile(indexPath);
 });
 
 // --- SERVER START ---
