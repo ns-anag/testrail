@@ -103,6 +103,7 @@ const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 
 const tools: FunctionDeclaration[] = [
+  // Existing functions
   {
     name: 'get_projects',
     description: 'Gets a list of all projects from TestRail.',
@@ -149,10 +150,369 @@ const tools: FunctionDeclaration[] = [
     description: 'Gets a list of milestones for a specific project from TestRail.',
     parameters: {
       type: GoogleGenAIType.OBJECT,
-      properties: { project_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the project in TestRail.' } },
+      properties: { 
+        project_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the project in TestRail.' },
+        is_completed: { type: GoogleGenAIType.BOOLEAN, description: 'Filter by completion status (optional).' },
+        is_started: { type: GoogleGenAIType.BOOLEAN, description: 'Filter by started status (optional).' }
+      },
       required: ['project_id'],
     },
   },
+  
+  // Phase 1: Essential CRUD Operations
+  
+  // Test Case Management
+  {
+    name: 'add_case',
+    description: 'Creates a new test case in the specified section.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        section_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the section to add the test case to.' },
+        title: { type: GoogleGenAIType.STRING, description: 'The title of the test case.' },
+        template_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the template to use (optional).' },
+        type_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the case type (optional).' },
+        priority_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the priority (optional).' },
+        estimate: { type: GoogleGenAIType.STRING, description: 'The estimate for the test case (optional).' },
+        refs: { type: GoogleGenAIType.STRING, description: 'References for the test case (optional).' }
+      },
+      required: ['section_id', 'title']
+    }
+  },
+  {
+    name: 'update_case',
+    description: 'Updates an existing test case.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        case_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test case to update.' },
+        title: { type: GoogleGenAIType.STRING, description: 'The new title of the test case (optional).' },
+        template_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the template to use (optional).' },
+        type_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the case type (optional).' },
+        priority_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the priority (optional).' },
+        estimate: { type: GoogleGenAIType.STRING, description: 'The estimate for the test case (optional).' },
+        refs: { type: GoogleGenAIType.STRING, description: 'References for the test case (optional).' }
+      },
+      required: ['case_id']
+    }
+  },
+  {
+    name: 'delete_case',
+    description: 'Deletes a test case permanently.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        case_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test case to delete.' }
+      },
+      required: ['case_id']
+    }
+  },
+  {
+    name: 'get_cases',
+    description: 'Gets test cases for a project with optional filtering.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        project_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the project.' },
+        suite_id: { type: GoogleGenAIType.INTEGER, description: 'Filter by suite ID (optional).' },
+        section_id: { type: GoogleGenAIType.INTEGER, description: 'Filter by section ID (optional).' },
+        milestone_id: { type: GoogleGenAIType.INTEGER, description: 'Filter by milestone ID (optional).' },
+        priority_id: { type: GoogleGenAIType.INTEGER, description: 'Filter by priority ID (optional).' },
+        type_id: { type: GoogleGenAIType.INTEGER, description: 'Filter by case type ID (optional).' },
+        created_by: { type: GoogleGenAIType.INTEGER, description: 'Filter by creator user ID (optional).' },
+        updated_by: { type: GoogleGenAIType.INTEGER, description: 'Filter by last updater user ID (optional).' }
+      },
+      required: ['project_id']
+    }
+  },
+  {
+    name: 'get_case_fields',
+    description: 'Gets available custom fields for test cases.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: 'get_case_types',
+    description: 'Gets available test case types.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: 'get_case_statuses',
+    description: 'Gets available test case statuses.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: 'get_priorities',
+    description: 'Gets available priority levels for test cases.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {},
+      required: []
+    }
+  },
+  
+  // Test Results Management
+  {
+    name: 'add_result',
+    description: 'Adds a test result for a specific test.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        test_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test to add the result for.' },
+        status_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test status (1=Passed, 2=Blocked, 3=Untested, 4=Retest, 5=Failed).' },
+        comment: { type: GoogleGenAIType.STRING, description: 'A comment for the test result (optional).' },
+        version: { type: GoogleGenAIType.STRING, description: 'The version tested (optional).' },
+        elapsed: { type: GoogleGenAIType.STRING, description: 'The time elapsed for the test (optional, e.g., "5m" or "1h 20m").' },
+        defects: { type: GoogleGenAIType.STRING, description: 'Defects associated with the test (optional).' }
+      },
+      required: ['test_id', 'status_id']
+    }
+  },
+  {
+    name: 'add_result_for_case',
+    description: 'Adds a test result for a case in a specific run.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        run_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test run.' },
+        case_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test case.' },
+        status_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test status (1=Passed, 2=Blocked, 3=Untested, 4=Retest, 5=Failed).' },
+        comment: { type: GoogleGenAIType.STRING, description: 'A comment for the test result (optional).' },
+        version: { type: GoogleGenAIType.STRING, description: 'The version tested (optional).' },
+        elapsed: { type: GoogleGenAIType.STRING, description: 'The time elapsed for the test (optional, e.g., "5m" or "1h 20m").' },
+        defects: { type: GoogleGenAIType.STRING, description: 'Defects associated with the test (optional).' }
+      },
+      required: ['run_id', 'case_id', 'status_id']
+    }
+  },
+  {
+    name: 'add_results',
+    description: 'Bulk adds test results for a run.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        run_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test run.' },
+        results: {
+          type: GoogleGenAIType.ARRAY,
+          description: 'Array of test results to add.',
+          items: {
+            type: GoogleGenAIType.OBJECT,
+            properties: {
+              test_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test.' },
+              status_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test status.' },
+              comment: { type: GoogleGenAIType.STRING, description: 'A comment for the result (optional).' },
+              version: { type: GoogleGenAIType.STRING, description: 'The version tested (optional).' },
+              elapsed: { type: GoogleGenAIType.STRING, description: 'The time elapsed (optional).' },
+              defects: { type: GoogleGenAIType.STRING, description: 'Associated defects (optional).' }
+            },
+            required: ['test_id', 'status_id']
+          }
+        }
+      },
+      required: ['run_id', 'results']
+    }
+  },
+  {
+    name: 'get_result_fields',
+    description: 'Gets custom fields available for test results.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {},
+      required: []
+    }
+  },
+  
+  // Test Run Management
+  {
+    name: 'add_run',
+    description: 'Creates a new test run for a project.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        project_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the project.' },
+        suite_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test suite (optional).' },
+        name: { type: GoogleGenAIType.STRING, description: 'The name of the test run.' },
+        description: { type: GoogleGenAIType.STRING, description: 'The description of the test run (optional).' },
+        milestone_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the milestone (optional).' },
+        assignedto_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the user to assign the run to (optional).' },
+        include_all: { type: GoogleGenAIType.BOOLEAN, description: 'True to include all test cases, false for custom selection (optional, defaults to true).' }
+      },
+      required: ['project_id', 'name']
+    }
+  },
+  {
+    name: 'update_run',
+    description: 'Updates an existing test run.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        run_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test run to update.' },
+        name: { type: GoogleGenAIType.STRING, description: 'The new name of the test run (optional).' },
+        description: { type: GoogleGenAIType.STRING, description: 'The new description of the test run (optional).' },
+        milestone_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the milestone (optional).' },
+        include_all: { type: GoogleGenAIType.BOOLEAN, description: 'True to include all test cases, false for custom selection (optional).' }
+      },
+      required: ['run_id']
+    }
+  },
+  {
+    name: 'delete_run',
+    description: 'Deletes a test run permanently.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        run_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test run to delete.' }
+      },
+      required: ['run_id']
+    }
+  },
+  {
+    name: 'get_run',
+    description: 'Gets details for a single test run.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        run_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test run.' }
+      },
+      required: ['run_id']
+    }
+  },
+  
+  // Section Management
+  {
+    name: 'get_sections',
+    description: 'Gets sections for a project and optionally for a specific suite.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        project_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the project.' },
+        suite_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the suite to filter by (optional).' }
+      },
+      required: ['project_id']
+    }
+  },
+  {
+    name: 'add_section',
+    description: 'Creates a new section in a project.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        project_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the project.' },
+        name: { type: GoogleGenAIType.STRING, description: 'The name of the section.' },
+        description: { type: GoogleGenAIType.STRING, description: 'The description of the section (optional).' },
+        suite_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the suite (optional).' },
+        parent_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the parent section (optional).' }
+      },
+      required: ['project_id', 'name']
+    }
+  },
+  {
+    name: 'update_section',
+    description: 'Updates an existing section.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        section_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the section to update.' },
+        name: { type: GoogleGenAIType.STRING, description: 'The new name of the section (optional).' },
+        description: { type: GoogleGenAIType.STRING, description: 'The new description of the section (optional).' }
+      },
+      required: ['section_id']
+    }
+  },
+  
+  // System Information
+  {
+    name: 'get_statuses',
+    description: 'Gets available test execution statuses.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: 'get_users',
+    description: 'Gets users associated with a project.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        project_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the project.' }
+      },
+      required: ['project_id']
+    }
+  },
+  
+  // Suite Management
+  {
+    name: 'get_suite',
+    description: 'Gets details for a single test suite.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        suite_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test suite.' }
+      },
+      required: ['suite_id']
+    }
+  },
+  {
+    name: 'get_suites',
+    description: 'Gets all test suites for a project.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        project_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the project.' }
+      },
+      required: ['project_id']
+    }
+  },
+  {
+    name: 'add_suite',
+    description: 'Creates a new test suite in a project.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        project_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the project.' },
+        name: { type: GoogleGenAIType.STRING, description: 'The name of the test suite.' },
+        description: { type: GoogleGenAIType.STRING, description: 'The description of the test suite (optional).' }
+      },
+      required: ['project_id', 'name']
+    }
+  },
+  {
+    name: 'update_suite',
+    description: 'Updates an existing test suite.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        suite_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test suite to update.' },
+        name: { type: GoogleGenAIType.STRING, description: 'The new name of the test suite (optional).' },
+        description: { type: GoogleGenAIType.STRING, description: 'The new description of the test suite (optional).' }
+      },
+      required: ['suite_id']
+    }
+  },
+  {
+    name: 'delete_suite',
+    description: 'Deletes a test suite permanently.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        suite_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test suite to delete.' }
+      },
+      required: ['suite_id']
+    }
+  }
 ];
 
 
@@ -160,7 +520,11 @@ const makeTestRailApiCall = async (functionName: string, args: any, settings: Te
   if (!settings) throw new Error("TestRail settings are not configured.");
 
   let endpoint = '';
+  let method: 'GET' | 'POST' = 'GET';
+  let body: any = null;
+
   switch (functionName) {
+    // Existing functions
     case 'get_projects':
       endpoint = 'get_projects';
       break;
@@ -177,36 +541,286 @@ const makeTestRailApiCall = async (functionName: string, args: any, settings: Te
       endpoint = `get_case/${args.case_id}`;
       break;
     case 'get_milestones_for_project':
-      endpoint = `get_milestones/${args.project_id}`;
+      // TestRail API uses path parameters with & separator for filtering
+      let milestonesEndpoint = `get_milestones/${args.project_id}`;
+      const milestoneFilters = [];
+      
+      if (args.is_completed !== undefined && args.is_completed !== null) {
+        milestoneFilters.push(`is_completed=${args.is_completed}`);
+      }
+      if (args.is_started !== undefined && args.is_started !== null) {
+        milestoneFilters.push(`is_started=${args.is_started}`);
+      }
+      
+      if (milestoneFilters.length > 0) {
+        milestonesEndpoint += '&' + milestoneFilters.join('&');
+      }
+      
+      endpoint = milestonesEndpoint;
       break;
+      
+    // Test Case Management
+    case 'add_case':
+      endpoint = `add_case/${args.section_id}`;
+      method = 'POST';
+      body = {
+        title: args.title,
+        ...(args.template_id && { template_id: args.template_id }),
+        ...(args.type_id && { type_id: args.type_id }),
+        ...(args.priority_id && { priority_id: args.priority_id }),
+        ...(args.estimate && { estimate: args.estimate }),
+        ...(args.refs && { refs: args.refs })
+      };
+      break;
+      
+    case 'update_case':
+      endpoint = `update_case/${args.case_id}`;
+      method = 'POST';
+      body = {};
+      if (args.title) body.title = args.title;
+      if (args.template_id) body.template_id = args.template_id;
+      if (args.type_id) body.type_id = args.type_id;
+      if (args.priority_id) body.priority_id = args.priority_id;
+      if (args.estimate) body.estimate = args.estimate;
+      if (args.refs) body.refs = args.refs;
+      break;
+      
+    case 'delete_case':
+      endpoint = `delete_case/${args.case_id}`;
+      method = 'POST';
+      break;
+      
+    case 'get_cases':
+      // TestRail API uses path parameters with & separator
+      let casesEndpoint = `get_cases/${args.project_id}`;
+      
+      // Add filters to path using & separator
+      if (args.suite_id !== undefined && args.suite_id !== null && args.suite_id !== '') {
+        casesEndpoint += `&suite_id=${args.suite_id}`;
+      }
+      if (args.section_id !== undefined && args.section_id !== null && args.section_id !== '') {
+        casesEndpoint += `&section_id=${args.section_id}`;
+      }
+      if (args.milestone_id !== undefined && args.milestone_id !== null && args.milestone_id !== '') {
+        casesEndpoint += `&milestone_id=${args.milestone_id}`;
+      }
+      if (args.priority_id !== undefined && args.priority_id !== null && args.priority_id !== '') {
+        casesEndpoint += `&priority_id=${args.priority_id}`;
+      }
+      if (args.type_id !== undefined && args.type_id !== null && args.type_id !== '') {
+        casesEndpoint += `&type_id=${args.type_id}`;
+      }
+      if (args.created_by !== undefined && args.created_by !== null && args.created_by !== '') {
+        casesEndpoint += `&created_by=${args.created_by}`;
+      }
+      if (args.updated_by !== undefined && args.updated_by !== null && args.updated_by !== '') {
+        casesEndpoint += `&updated_by=${args.updated_by}`;
+      }
+      
+      endpoint = casesEndpoint;
+      break;
+      
+    case 'get_case_fields':
+      endpoint = 'get_case_fields';
+      break;
+      
+    case 'get_case_types':
+      endpoint = 'get_case_types';
+      break;
+      
+    case 'get_case_statuses':
+      endpoint = 'get_case_statuses';
+      break;
+      
+    case 'get_priorities':
+      endpoint = 'get_priorities';
+      break;
+      
+    // Test Results Management
+    case 'add_result':
+      endpoint = `add_result/${args.test_id}`;
+      method = 'POST';
+      body = {
+        status_id: args.status_id,
+        ...(args.comment && { comment: args.comment }),
+        ...(args.version && { version: args.version }),
+        ...(args.elapsed && { elapsed: args.elapsed }),
+        ...(args.defects && { defects: args.defects })
+      };
+      break;
+      
+    case 'add_result_for_case':
+      endpoint = `add_result_for_case/${args.run_id}/${args.case_id}`;
+      method = 'POST';
+      body = {
+        status_id: args.status_id,
+        ...(args.comment && { comment: args.comment }),
+        ...(args.version && { version: args.version }),
+        ...(args.elapsed && { elapsed: args.elapsed }),
+        ...(args.defects && { defects: args.defects })
+      };
+      break;
+      
+    case 'add_results':
+      endpoint = `add_results/${args.run_id}`;
+      method = 'POST';
+      body = {
+        results: args.results
+      };
+      break;
+      
+    case 'get_result_fields':
+      endpoint = 'get_result_fields';
+      break;
+      
+    // Test Run Management
+    case 'add_run':
+      endpoint = `add_run/${args.project_id}`;
+      method = 'POST';
+      body = {
+        name: args.name,
+        ...(args.suite_id && { suite_id: args.suite_id }),
+        ...(args.description && { description: args.description }),
+        ...(args.milestone_id && { milestone_id: args.milestone_id }),
+        ...(args.assignedto_id && { assignedto_id: args.assignedto_id }),
+        ...(args.include_all !== undefined && { include_all: args.include_all })
+      };
+      break;
+      
+    case 'update_run':
+      endpoint = `update_run/${args.run_id}`;
+      method = 'POST';
+      body = {};
+      if (args.name) body.name = args.name;
+      if (args.description) body.description = args.description;
+      if (args.milestone_id) body.milestone_id = args.milestone_id;
+      if (args.include_all !== undefined) body.include_all = args.include_all;
+      break;
+      
+    case 'delete_run':
+      endpoint = `delete_run/${args.run_id}`;
+      method = 'POST';
+      break;
+      
+    case 'get_run':
+      endpoint = `get_run/${args.run_id}`;
+      break;
+      
+    // Section Management
+    case 'get_sections':
+      // TestRail API uses path parameters with & separator
+      let sectionsEndpoint = `get_sections/${args.project_id}`;
+      if (args.suite_id !== undefined && args.suite_id !== null && args.suite_id !== '') {
+        sectionsEndpoint += `&suite_id=${args.suite_id}`;
+      }
+      endpoint = sectionsEndpoint;
+      break;
+      
+    case 'add_section':
+      endpoint = `add_section/${args.project_id}`;
+      method = 'POST';
+      body = {
+        name: args.name,
+        ...(args.description && { description: args.description }),
+        ...(args.suite_id && { suite_id: args.suite_id }),
+        ...(args.parent_id && { parent_id: args.parent_id })
+      };
+      break;
+      
+    case 'update_section':
+      endpoint = `update_section/${args.section_id}`;
+      method = 'POST';
+      body = {};
+      if (args.name) body.name = args.name;
+      if (args.description) body.description = args.description;
+      break;
+      
+    // System Information
+    case 'get_statuses':
+      endpoint = 'get_statuses';
+      break;
+      
+    case 'get_users':
+      endpoint = `get_users/${args.project_id}`;
+      break;
+      
+    // Suite Management
+    case 'get_suite':
+      endpoint = `get_suite/${args.suite_id}`;
+      break;
+      
+    case 'get_suites':
+      endpoint = `get_suites/${args.project_id}`;
+      break;
+      
+    case 'add_suite':
+      endpoint = `add_suite/${args.project_id}`;
+      method = 'POST';
+      body = {
+        name: args.name,
+        ...(args.description && { description: args.description })
+      };
+      break;
+      
+    case 'update_suite':
+      endpoint = `update_suite/${args.suite_id}`;
+      method = 'POST';
+      body = {};
+      if (args.name) body.name = args.name;
+      if (args.description) body.description = args.description;
+      break;
+      
+    case 'delete_suite':
+      endpoint = `delete_suite/${args.suite_id}`;
+      method = 'POST';
+      break;
+      
     default:
       throw new Error(`Unknown function call: ${functionName}`);
   }
 
   const apiUrl = `${settings.url}/index.php?/api/v2/${endpoint}`;
-
-  const response = await fetch(apiUrl, {
+  const requestOptions: RequestInit = {
+    method,
     headers: {
       'Content-Type': 'application/json',
       'Authorization': 'Basic ' + btoa(`${settings.email}:${settings.apiKey}`)
     }
-  });
+  };
+
+  if (body) {
+    requestOptions.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(apiUrl, requestOptions);
 
   if (!response.ok) {
     const errorBody = await response.text();
-    let errorMessage = `TestRail API Error: Status ${response.status}.`;
+    let errorMessage = `TestRail API Error: ${functionName} failed with status ${response.status}.`;
+    
     try {
       const errorJson = JSON.parse(errorBody);
       if (errorJson.error) {
         errorMessage += ` Message: "${errorJson.error}"`;
+        
+        // Add specific handling for common errors
+        if (response.status === 400) {
+          errorMessage += " Please check required parameters and data format.";
+        } else if (response.status === 403) {
+          errorMessage += " Insufficient permissions for this operation.";
+        } else if (response.status === 404) {
+          errorMessage += " The requested resource was not found.";
+        }
       } else {
         errorMessage += ` Details: ${errorBody}`;
       }
     } catch (jsonError) {
       errorMessage += ` Details: ${errorBody}`;
     }
+    
     throw new Error(errorMessage);
   }
+  
   return response.json();
 };
 
@@ -233,7 +847,46 @@ app.post('/api/chat', async (req, res) => {
           model: 'gemini-2.5-flash',
           config: {
               tools: [{ functionDeclarations: tools }],
-              systemInstruction: 'You are an expert on TestRail. You will answer questions about projects, test runs, test cases, and milestones. When a user asks for information, you must use the available tools to fetch live data. After receiving the data from the tool, present it to the user in a clear and readable format. Available tools are: get_projects, get_test_runs_for_project, get_tests_for_run, get_results_for_run, get_test_case, get_milestones_for_project.',
+              systemInstruction: `You are an expert TestRail assistant with comprehensive API access for test case management, test execution, and project organization.
+
+CORE CAPABILITIES:
+
+TEST CASE MANAGEMENT:
+- Create, read, update, and delete test cases (add_case, update_case, delete_case, get_case, get_cases)
+- Search and filter test cases by project, suite, section, type, priority, milestone, and custom criteria
+- Manage test case metadata including types, priorities, statuses, and custom fields
+- Access case fields, types, statuses, and priorities for proper data validation
+
+TEST EXECUTION:
+- Add individual test results (add_result) or results for specific cases in runs (add_result_for_case)
+- Bulk add results for efficient test execution updates (add_results)
+- Create, update, and delete test runs with flexible configuration options
+- Track test progress and status changes with proper status codes (1=Passed, 2=Blocked, 3=Untested, 4=Retest, 5=Failed)
+- Support custom result fields and detailed execution information
+
+PROJECT ORGANIZATION:
+- Manage sections within projects and suites (get_sections, add_section, update_section)
+- Organize test cases hierarchically with parent-child section relationships
+- Access project users and system configuration information
+
+METADATA ACCESS:
+- Get available case types, priorities, statuses, and custom fields
+- Access user information for assignments and reporting
+- Retrieve system configuration for proper API usage
+
+CONTEXT AWARENESS:
+When users mention project names, test run IDs, case IDs, or other entities from previous conversations, remember and use that context for subsequent operations. Always confirm critical actions like deletions before proceeding.
+
+For status_id parameters, use these standard values:
+- 1 = Passed
+- 2 = Blocked  
+- 3 = Untested
+- 4 = Retest
+- 5 = Failed
+
+Available functions: ${tools.map(t => t.name).join(', ')}
+
+Always provide clear, actionable information and ask for clarification when parameters are ambiguous.`,
           },
           history: history.filter(m => m.role !== Role.System).map(m => ({
             role: m.role,
