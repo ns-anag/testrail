@@ -18,7 +18,7 @@
     "dev:legacy": "nodemon",
     "preview": "npm run build && npm run start:dev",
     "analyze": "npm run build:frontend -- --analyze",
-    "docker:build": "docker build -t testrail-agent .",
+    "docker:build": "docker build --no-cache -t testrail-agent .",
     "docker:run": "docker run -p 3001:3001 --env-file .env testrail-agent",
     "docker:run:env": "docker run -p 3001:3001 testrail-agent",
     "docker:up": "docker-compose up --build",
