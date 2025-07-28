@@ -111,10 +111,21 @@ const tools: FunctionDeclaration[] = [
   },
   {
     name: 'get_test_runs_for_project',
-    description: 'Gets a list of test runs for a specific project from TestRail.',
+    description: 'Gets a list of test runs for a specific project from TestRail with optional filtering.',
     parameters: {
       type: GoogleGenAIType.OBJECT,
-      properties: { project_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the project in TestRail.' } },
+      properties: { 
+        project_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the project in TestRail.' },
+        created_after: { type: GoogleGenAIType.INTEGER, description: 'Only return test runs created after this date (as UNIX timestamp) (optional).' },
+        created_before: { type: GoogleGenAIType.INTEGER, description: 'Only return test runs created before this date (as UNIX timestamp) (optional).' },
+        created_by: { type: GoogleGenAIType.STRING, description: 'A comma-separated list of creators (user IDs) to filter by (optional).' },
+        is_completed: { type: GoogleGenAIType.BOOLEAN, description: 'True to return completed test runs only. False to return active test runs only (optional).' },
+        limit: { type: GoogleGenAIType.INTEGER, description: 'Limit the result to specified number of test runs (optional).' },
+        offset: { type: GoogleGenAIType.INTEGER, description: 'Number of test runs to skip for pagination (optional).' },
+        milestone_id: { type: GoogleGenAIType.STRING, description: 'A comma-separated list of milestone IDs to filter by (optional).' },
+        refs_filter: { type: GoogleGenAIType.STRING, description: 'A single Reference ID to filter by (e.g. TR-a, 4291, etc.) (optional).' },
+        suite_id: { type: GoogleGenAIType.STRING, description: 'A comma-separated list of test suite IDs to filter by (optional).' }
+      },
       required: ['project_id'],
     },
   },
@@ -157,6 +168,137 @@ const tools: FunctionDeclaration[] = [
       },
       required: ['project_id'],
     },
+  },
+  
+  // Additional Test Run Management Functions
+  {
+    name: 'get_run',
+    description: 'Gets details for a single test run.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        run_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test run.' }
+      },
+      required: ['run_id']
+    }
+  },
+  {
+    name: 'add_run',
+    description: 'Creates a new test run for a project.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        project_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the project.' },
+        name: { type: GoogleGenAIType.STRING, description: 'The name of the test run.' },
+        suite_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test suite (optional if project is in single suite mode).' },
+        description: { type: GoogleGenAIType.STRING, description: 'The description of the test run (optional).' },
+        milestone_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the milestone to link to the test run (optional).' },
+        assignedto_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the user the test run should be assigned to (optional).' },
+        include_all: { type: GoogleGenAIType.BOOLEAN, description: 'True for including all test cases of the test suite and false for a custom case selection (default: true) (optional).' },
+        case_ids: { type: GoogleGenAIType.ARRAY, description: 'An array of case IDs for the custom case selection (optional).', items: { type: GoogleGenAIType.INTEGER } },
+        refs: { type: GoogleGenAIType.STRING, description: 'A comma-separated list of references/requirements (optional).' }
+      },
+      required: ['project_id', 'name']
+    }
+  },
+  {
+    name: 'update_run',
+    description: 'Updates an existing test run.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        run_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test run to update.' },
+        name: { type: GoogleGenAIType.STRING, description: 'The new name of the test run (optional).' },
+        description: { type: GoogleGenAIType.STRING, description: 'The new description of the test run (optional).' },
+        milestone_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the milestone to link to the test run (optional).' },
+        include_all: { type: GoogleGenAIType.BOOLEAN, description: 'True for including all test cases of the test suite and false for a custom case selection (optional).' },
+        case_ids: { type: GoogleGenAIType.ARRAY, description: 'An array of case IDs for the custom case selection (optional).', items: { type: GoogleGenAIType.INTEGER } },
+        refs: { type: GoogleGenAIType.STRING, description: 'A comma-separated list of references/requirements (optional).' }
+      },
+      required: ['run_id']
+    }
+  },
+  {
+    name: 'close_run',
+    description: 'Closes a test run (marks as completed).',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        run_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test run to close.' }
+      },
+      required: ['run_id']
+    }
+  },
+  {
+    name: 'delete_run',
+    description: 'Deletes a test run permanently.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        run_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the test run to delete.' }
+      },
+      required: ['run_id']
+    }
+  },
+  
+  // Additional Milestone Management Functions
+  {
+    name: 'get_milestone',
+    description: 'Gets details for a single milestone.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        milestone_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the milestone.' }
+      },
+      required: ['milestone_id']
+    }
+  },
+  {
+    name: 'add_milestone',
+    description: 'Creates a new milestone in a project.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        project_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the project.' },
+        name: { type: GoogleGenAIType.STRING, description: 'The name of the milestone.' },
+        description: { type: GoogleGenAIType.STRING, description: 'The description of the milestone (optional).' },
+        due_on: { type: GoogleGenAIType.INTEGER, description: 'The due date of the milestone (as UNIX timestamp) (optional).' },
+        parent_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the parent milestone for sub-milestones (optional).' },
+        refs: { type: GoogleGenAIType.STRING, description: 'A comma-separated list of references/requirements (optional).' },
+        start_on: { type: GoogleGenAIType.INTEGER, description: 'The scheduled start date of the milestone (as UNIX timestamp) (optional).' }
+      },
+      required: ['project_id', 'name']
+    }
+  },
+  {
+    name: 'update_milestone',
+    description: 'Updates an existing milestone.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        milestone_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the milestone to update.' },
+        name: { type: GoogleGenAIType.STRING, description: 'The new name of the milestone (optional).' },
+        description: { type: GoogleGenAIType.STRING, description: 'The new description of the milestone (optional).' },
+        due_on: { type: GoogleGenAIType.INTEGER, description: 'The due date of the milestone (as UNIX timestamp) (optional).' },
+        parent_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the parent milestone for sub-milestones (optional).' },
+        refs: { type: GoogleGenAIType.STRING, description: 'A comma-separated list of references/requirements (optional).' },
+        start_on: { type: GoogleGenAIType.INTEGER, description: 'The scheduled start date of the milestone (as UNIX timestamp) (optional).' },
+        is_completed: { type: GoogleGenAIType.BOOLEAN, description: 'Completion status (optional).' },
+        is_started: { type: GoogleGenAIType.BOOLEAN, description: 'Started status (optional).' }
+      },
+      required: ['milestone_id']
+    }
+  },
+  {
+    name: 'delete_milestone',
+    description: 'Deletes a milestone permanently.',
+    parameters: {
+      type: GoogleGenAIType.OBJECT,
+      properties: {
+        milestone_id: { type: GoogleGenAIType.INTEGER, description: 'The ID of the milestone to delete.' }
+      },
+      required: ['milestone_id']
+    }
   },
   
   // Phase 1: Essential CRUD Operations
@@ -528,9 +670,46 @@ const makeTestRailApiCall = async (functionName: string, args: any, settings: Te
     case 'get_projects':
       endpoint = 'get_projects';
       break;
-    case 'get_test_runs_for_project':
-      endpoint = `get_runs/${args.project_id}`;
+    case 'get_test_runs_for_project': {
+      // TestRail API uses & separator for filtering after path parameters
+      let runsEndpoint = `get_runs/${args.project_id}`;
+      const runFilters = [];
+      
+      if (args.created_after !== undefined && args.created_after !== null) {
+        runFilters.push(`created_after=${args.created_after}`);
+      }
+      if (args.created_before !== undefined && args.created_before !== null) {
+        runFilters.push(`created_before=${args.created_before}`);
+      }
+      if (args.created_by !== undefined && args.created_by !== null && args.created_by !== '') {
+        runFilters.push(`created_by=${args.created_by}`);
+      }
+      if (args.is_completed !== undefined && args.is_completed !== null) {
+        runFilters.push(`is_completed=${args.is_completed ? 1 : 0}`);
+      }
+      if (args.limit !== undefined && args.limit !== null) {
+        runFilters.push(`limit=${args.limit}`);
+      }
+      if (args.offset !== undefined && args.offset !== null) {
+        runFilters.push(`offset=${args.offset}`);
+      }
+      if (args.milestone_id !== undefined && args.milestone_id !== null && args.milestone_id !== '') {
+        runFilters.push(`milestone_id=${args.milestone_id}`);
+      }
+      if (args.refs_filter !== undefined && args.refs_filter !== null && args.refs_filter !== '') {
+        runFilters.push(`refs_filter=${args.refs_filter}`);
+      }
+      if (args.suite_id !== undefined && args.suite_id !== null && args.suite_id !== '') {
+        runFilters.push(`suite_id=${args.suite_id}`);
+      }
+      
+      if (runFilters.length > 0) {
+        runsEndpoint += '&' + runFilters.join('&');
+      }
+      
+      endpoint = runsEndpoint;
       break;
+    }
     case 'get_tests_for_run':
       endpoint = `get_tests/${args.run_id}`;
       break;
@@ -541,7 +720,7 @@ const makeTestRailApiCall = async (functionName: string, args: any, settings: Te
       endpoint = `get_case/${args.case_id}`;
       break;
     case 'get_milestones_for_project':
-      // TestRail API uses path parameters with & separator for filtering
+      // TestRail API uses & separator for filtering after path parameters
       let milestonesEndpoint = `get_milestones/${args.project_id}`;
       const milestoneFilters = [];
       
@@ -591,7 +770,7 @@ const makeTestRailApiCall = async (functionName: string, args: any, settings: Te
       break;
       
     case 'get_cases':
-      // TestRail API uses path parameters with & separator
+      // TestRail API uses & separator for filtering after path parameters
       let casesEndpoint = `get_cases/${args.project_id}`;
       
       // Add filters to path using & separator
@@ -708,7 +887,7 @@ const makeTestRailApiCall = async (functionName: string, args: any, settings: Te
       
     // Section Management
     case 'get_sections':
-      // TestRail API uses path parameters with & separator
+      // TestRail API uses & separator for filtering after path parameters
       let sectionsEndpoint = `get_sections/${args.project_id}`;
       if (args.suite_id !== undefined && args.suite_id !== null && args.suite_id !== '') {
         sectionsEndpoint += `&suite_id=${args.suite_id}`;
@@ -772,6 +951,89 @@ const makeTestRailApiCall = async (functionName: string, args: any, settings: Te
       
     case 'delete_suite':
       endpoint = `delete_suite/${args.suite_id}`;
+      method = 'POST';
+      break;
+      
+    // Additional Test Run Management Functions
+    case 'get_run':
+      endpoint = `get_run/${args.run_id}`;
+      break;
+      
+    case 'add_run': {
+      endpoint = `add_run/${args.project_id}`;
+      method = 'POST';
+      body = {
+        name: args.name,
+        ...(args.suite_id && { suite_id: args.suite_id }),
+        ...(args.description && { description: args.description }),
+        ...(args.milestone_id && { milestone_id: args.milestone_id }),
+        ...(args.assignedto_id && { assignedto_id: args.assignedto_id }),
+        ...(args.include_all !== undefined && { include_all: args.include_all }),
+        ...(args.case_ids && { case_ids: args.case_ids }),
+        ...(args.refs && { refs: args.refs })
+      };
+      break;
+    }
+      
+    case 'update_run': {
+      endpoint = `update_run/${args.run_id}`;
+      method = 'POST';
+      body = {};
+      if (args.name) body.name = args.name;
+      if (args.description) body.description = args.description;
+      if (args.milestone_id) body.milestone_id = args.milestone_id;
+      if (args.include_all !== undefined) body.include_all = args.include_all;
+      if (args.case_ids) body.case_ids = args.case_ids;
+      if (args.refs) body.refs = args.refs;
+      break;
+    }
+      
+    case 'close_run':
+      endpoint = `close_run/${args.run_id}`;
+      method = 'POST';
+      break;
+      
+    case 'delete_run':
+      endpoint = `delete_run/${args.run_id}`;
+      method = 'POST';
+      break;
+      
+    // Additional Milestone Management Functions  
+    case 'get_milestone':
+      endpoint = `get_milestone/${args.milestone_id}`;
+      break;
+      
+    case 'add_milestone': {
+      endpoint = `add_milestone/${args.project_id}`;
+      method = 'POST';
+      body = {
+        name: args.name,
+        ...(args.description && { description: args.description }),
+        ...(args.due_on && { due_on: args.due_on }),
+        ...(args.parent_id && { parent_id: args.parent_id }),
+        ...(args.refs && { refs: args.refs }),
+        ...(args.start_on && { start_on: args.start_on })
+      };
+      break;
+    }
+      
+    case 'update_milestone': {
+      endpoint = `update_milestone/${args.milestone_id}`;
+      method = 'POST';
+      body = {};
+      if (args.name) body.name = args.name;
+      if (args.description) body.description = args.description;
+      if (args.due_on) body.due_on = args.due_on;
+      if (args.parent_id) body.parent_id = args.parent_id;
+      if (args.refs) body.refs = args.refs;
+      if (args.start_on) body.start_on = args.start_on;
+      if (args.is_completed !== undefined) body.is_completed = args.is_completed;
+      if (args.is_started !== undefined) body.is_started = args.is_started;
+      break;
+    }
+      
+    case 'delete_milestone':
+      endpoint = `delete_milestone/${args.milestone_id}`;
       method = 'POST';
       break;
       
